@@ -47,16 +47,17 @@ and undirected edge-disjoint and internally vertex-disjoint ([Diestel2025], Coro
 
 ## Scope
 
-Finite graphs, two terminals, and simple digraphs only. Not covered: directed multigraphs, the
-set version for `A`-`B` paths ([Schrijver2017], Theorem 4.1; [Diestel2025], Theorem 3.3.1), the
-global `k`-connectivity form ([Diestel2025], Theorem 3.3.6), infinite graphs, and any running-time
-bound. The proofs are existence proofs with no algorithm attached.
+Finite graphs, two terminals, and simple digraphs only. The finite `A`–`B` vertex forms are in
+`MengerSet.lean`. Not covered here: directed multigraphs, the global `k`-connectivity form
+([Diestel2025], Theorem 3.3.6), infinite graphs, and any running-time bound. The proofs are
+existence proofs with no algorithm attached.
 
 ## Main definitions
 
 * `Cslib.Algorithms.Lean.MaxFlow.IsDipath`, `ArcDisjoint`, `InternallyDisjoint`, `IsArcCut`,
   `IsVertexCut`, `outArcs`: directed paths, disjointness and cuts.
 * `Cslib.Algorithms.Lean.MaxFlow.IsVertexSeparator`: vertex separators in a `SimpleGraph`.
+* `Cslib.Algorithms.Lean.MaxFlow.toDigraph`: the symmetric digraph of a simple graph.
 
 ## Main results
 
@@ -594,7 +595,12 @@ open SimpleGraph
 variable {V : Type*}
 
 /-- The symmetric digraph of a simple graph: each edge becomes two opposite arcs. -/
-private def toDigraph (G : SimpleGraph V) : Digraph V := ⟨G.Adj⟩
+def toDigraph (G : SimpleGraph V) : Digraph V := ⟨G.Adj⟩
+
+instance instDecidableRelToDigraph {G : SimpleGraph V} [DecidableRel G.Adj] :
+    DecidableRel (toDigraph G).Adj :=
+  fun a b => decidable_of_iff (inferInstanceAs (Decidable (G.Adj a b))) <| by
+    simp [toDigraph]
 
 private theorem edges_eq_map_pathArcs {G : SimpleGraph V} {u v : V} (w : G.Walk u v) :
     w.edges = (pathArcs w.support).map fun e => s(e.1, e.2) := by
@@ -607,14 +613,16 @@ private theorem edges_eq_map_pathArcs {G : SimpleGraph V} {u v : V} (w : G.Walk 
       rw [Walk.edges_cons, ih]
       simp
 
-private theorem isDipath_support {G : SimpleGraph V} {u v : V} {w : G.Walk u v}
+/-- The support of an undirected path is a directed path in `toDigraph G`. -/
+theorem isDipath_support {G : SimpleGraph V} {u v : V} {w : G.Walk u v}
     (hw : w.IsPath) : IsDipath (toDigraph G) u v w.support := by
   refine ⟨hw.support_nodup, ?_, ?_,
     forall_mem_pathArcs_iff_isChain.mpr w.isChain_adj_support⟩
   · rw [List.head?_eq_some_head (Walk.support_ne_nil w), Walk.head_support]
   · rw [List.getLast?_eq_some_getLast (Walk.support_ne_nil w), Walk.getLast_support]
 
-private theorem exists_walk_of_isDipath {G : SimpleGraph V} {u v : V} {p : List V}
+/-- A directed path in `toDigraph G` is the support of an undirected path. -/
+theorem exists_walk_of_isDipath {G : SimpleGraph V} {u v : V} {p : List V}
     (hp : IsDipath (toDigraph G) u v p) : ∃ w : G.Walk u v, w.IsPath ∧ w.support = p := by
   obtain ⟨hnd, hu, hv, hadj⟩ := hp
   have hne : p ≠ [] := by grind

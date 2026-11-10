@@ -397,7 +397,7 @@ Limitations:
 
 ## Minimum vertex separators
 
-Import `CslibFrontier.Algorithms.Lean.MaxFlow.VertexSeparator` ([source](../../CslibFrontier/Algorithms/Lean/MaxFlow/VertexSeparator.lean)). `minSeparatorM G Z A B` runs the dense Edmonds–Karp solver `edmondsKarpDenseM` on the vertex-split network `vertexSplitNetwork G Z A B` and returns a minimum set `X` of vertices outside `Z` such that `Z ∪ X` separates `A` from `B` ([`SimpleGraph.IsSeparator`](../../CslibFrontier/Foundations/Combinatorics/SimpleGraph/Separator.lean)). It is a `TimeM ℕ` program with Edmonds–Karp's unit-cost model, bounded by `time_minSeparatorM_le`. Its client is odd cycle transversal by iterative compression; see [parameterized complexity](../machines-and-classes/parameterized-complexity.md#iterative-compression-odd-cycle-transversal). Relating `SimpleGraph.IsSeparator` to the single-terminal Menger separator is an open follow-up in `ROADMAP.md`.
+Import `CslibFrontier.Algorithms.Lean.MaxFlow.VertexSeparator` ([source](../../CslibFrontier/Algorithms/Lean/MaxFlow/VertexSeparator.lean)). `minSeparatorM G Z A B` runs the dense Edmonds–Karp solver `edmondsKarpDenseM` on the vertex-split network `vertexSplitNetwork G Z A B` and returns a minimum set `X` of vertices outside `Z` such that `Z ∪ X` separates `A` from `B` ([`SimpleGraph.IsSeparator`](../../CslibFrontier/Foundations/Combinatorics/SimpleGraph/Separator.lean)). It is a `TimeM ℕ` program with Edmonds–Karp's unit-cost model, bounded by `time_minSeparatorM_le`. Its client is odd cycle transversal by iterative compression; see [parameterized complexity](../machines-and-classes/parameterized-complexity.md#iterative-compression-odd-cycle-transversal). `isVertexSeparator_iff_isSeparator` in [Menger's theorem](#mengers-theorem) identifies `SimpleGraph.IsSeparator` of two singletons with `IsVertexSeparator`. Stating the algorithmic separator `Z ∪ X` itself as a Menger cut remains open ([#3409](https://github.com/cslib-community/cslib-frontier/issues/3409)).
 
 ## Maximum flow: generic push–relabel
 
@@ -418,7 +418,7 @@ Limitations: the bounds count operations and do not charge the selection of an o
 
 ## Menger's theorem
 
-Import `CslibFrontier.Algorithms.Lean.MaxFlow.Menger` ([source](../../CslibFrontier/Algorithms/Lean/MaxFlow/Menger.lean)). The declarations live in `Cslib.Algorithms.Lean.MaxFlow`. This is a theorem-level development: there is no algorithm and no running time. Every form of [Menger's theorem][menger27] is derived from the integral max-flow min-cut theorem `Network.exists_maxFlow_eq_minCut` together with a flow decomposition, and each comes in two versions: an `iff` against all cuts, and an existence statement whose cut has exactly as many elements as there are paths. Graphs are finite and have two terminals. Directed paths are duplicate-free vertex lists (`IsDipath`). Undirected paths are Mathlib `Walk`s with `IsPath`.
+Import `CslibFrontier.Algorithms.Lean.MaxFlow.Menger` ([source](../../CslibFrontier/Algorithms/Lean/MaxFlow/Menger.lean)) for the two-terminal forms, and `CslibFrontier.Algorithms.Lean.MaxFlow.MengerSet` ([source](../../CslibFrontier/Algorithms/Lean/MaxFlow/MengerSet.lean)) for the finite `A`–`B` vertex forms. The declarations live in `Cslib.Algorithms.Lean.MaxFlow`. This is a theorem-level development: there is no algorithm and no running time. Every form of [Menger's theorem][menger27] is derived from the integral max-flow min-cut theorem `Network.exists_maxFlow_eq_minCut` together with a flow decomposition, and each comes in two versions: an `iff` against all cuts, and an existence statement whose cut has exactly as many elements as there are paths. Graphs are finite. The two-terminal forms have two terminals; the `A`–`B` forms take finite vertex sets. Directed paths are duplicate-free vertex lists (`IsDipath`, `IsABDipath`). Undirected paths are Mathlib `Walk`s with `IsPath`, or the same lists in `toDigraph G`.
 
 | Form | Source | `iff` version | Matching-cut version |
 |---|---|---|---|
@@ -440,10 +440,18 @@ The reusable flow layer is [Decomposition.lean](../../CslibFrontier/Algorithms/L
 
 The [tests](../../CslibFrontierTests/Menger.lean) check two examples. In the 3-cube, between antipodal vertices, the edge and vertex connectivity are both `3`: they give three explicit paths, show `IsEdgeReachable 3`, refute `IsEdgeReachable 4` with the three edges at `0`, and refute four internally disjoint paths with the separator `{1, 2, 4}`. One test applies `exists_internallyDisjoint_eq_isVertexSeparator` as stated and pins its common size `m` to `3` by weak duality. They also check a small digraph with arc and vertex connectivity `2`.
 
+### `A`–`B` vertex form
+
+`IsABDipath` is a strict directed `A`–`B` path: it starts in `A`, ends in `B`, and meets `A ∪ B` only at its ends. A singleton is an `A`–`B` path exactly when its vertex lies in `A ∩ B`. `IsABVertexCut` meets every such path. It may meet `A` and `B`, and it must contain `A ∩ B`. `exists_vertexDisjoint_eq_isABVertexCut` and `exists_vertexDisjoint_iff_forall_isABVertexCut` are [Schrijver's Theorem 4.1][schrijver17] for simple digraphs. The proof is the reduction used there: add a super-source with arcs into `A` and a super-sink with arcs out of `B`, apply `exists_internallyDisjoint_eq_isVertexCut`, and shortcut each super-source–super-sink path to a strict `A`–`B` path. `isABVertexCut_of_closed` is the closed-set certificate.
+
+On a simple graph, `isABVertexCut_iff_isSeparator` identifies that cut with [`SimpleGraph.IsSeparator`](../../CslibFrontier/Foundations/Combinatorics/SimpleGraph/Separator.lean). `exists_vertexDisjoint_eq_isSeparator` and `exists_vertexDisjoint_iff_forall_isSeparator` are [Diestel's Theorem 3.3.1][diestel25] for finite simple graphs, applied to `toDigraph G`. `isVertexSeparator_iff_isSeparator` is the single-terminal case: an `IsVertexSeparator` is that separator of the two singletons, together with both terminals outside the cut ([Diestel, §1.4][diestel25]).
+
+The [tests](../../CslibFrontierTests/MengerSet.lean) check a 5-vertex digraph with two strict paths and a cut of size `2`, pin the matching-cut size by weak duality, and refute three paths. They force an `A ∩ B` vertex into every cut. The same packing is checked undirected, and a 3-vertex path checks the single-terminal bridge, including a separator that contains a terminal and is therefore not an `IsVertexSeparator`.
+
 Limitations:
 
-- Only finite graphs with two terminals are covered. Directed graphs are Mathlib `Digraph`s, which have no parallel arcs, so the arc form covers simple digraphs and not the directed multigraphs allowed by Schrijver.
-- The `A`–`B` set version ([Schrijver 2017][schrijver17], Theorem 4.1; [Diestel 2025][diestel25], Theorem 3.3.1) is not formalized, and neither is the global `k`-connectivity form ([Diestel 2025][diestel25], Theorem 3.3.6).
+- Directed graphs are Mathlib `Digraph`s, which have no parallel arcs, so the arc form covers simple digraphs and not the directed multigraphs allowed by Schrijver. The `A`–`B` vertex forms have the same restriction.
+- The arc and edge `A`–`B` forms are not formalized, and neither is the global `k`-connectivity form ([Diestel 2025][diestel25], Theorem 3.3.6). The finite `A`–`B` vertex forms above do not close that objective.
 - Infinite graphs and the Erdős–Menger conjecture (Aharoni–Berger) are not formalized.
 - No algorithm or running time is given for computing local connectivity.
 
