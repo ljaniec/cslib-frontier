@@ -107,8 +107,8 @@ theorem mem_of_mem_inter_of_isABVertexCut {G : Digraph V} {A B : Finset V} {v : 
   have hp : IsABDipath G A B [v] := by
     refine ⟨List.nodup_singleton v, ⟨v, hvA, rfl⟩, ⟨v, hvB, rfl⟩, ?_, by simp⟩
     intro w hw hne _
-    simp at hw
-    exact absurd hw hne
+    have hw' : w = v := List.mem_singleton.mp hw
+    exact hne (by simp only [hw', List.head?_cons])
   obtain ⟨w, hw, hwT⟩ := hT _ hp
   simp only [List.mem_singleton] at hw
   exact hw ▸ hwT
@@ -309,19 +309,19 @@ private theorem dropUntilLastMem_suffix (S : Finset V) :
 private theorem head_mem_dropUntilLastMem (S : Finset V) (p : List V) {v : V}
     (hv : (dropUntilLastMem S p).head? = some v) : v ∈ S := by
   induction p with
-  | nil => simp [dropUntilLastMem] at hv
+  | nil => exact Option.noConfusion (by simpa [dropUntilLastMem, List.head?_nil] using hv)
   | cons u us ih =>
     unfold dropUntilLastMem at hv
     split_ifs at hv with htail hu
-    · simp at hv
+    · simp only [List.head?_cons, Option.some.injEq] at hv
       exact hv ▸ hu
-    · simp at hv
+    · exact Option.noConfusion (by simpa [List.head?_nil] using hv)
     · exact ih hv
 
 private theorem getLast?_dropUntilLastMem (S : Finset V) (p : List V)
     (hne : dropUntilLastMem S p ≠ []) : (dropUntilLastMem S p).getLast? = p.getLast? := by
   induction p with
-  | nil => simp [dropUntilLastMem] at hne
+  | nil => exact absurd rfl (by simpa [dropUntilLastMem] using hne)
   | cons u us ih =>
     unfold dropUntilLastMem at hne ⊢
     split_ifs with htail hu
@@ -335,7 +335,7 @@ private theorem getLast?_dropUntilLastMem (S : Finset V) (p : List V)
 private theorem not_mem_tail_dropUntilLastMem (S : Finset V) (p : List V) {v : V}
     (hv : v ∈ (dropUntilLastMem S p).tail) : v ∉ S := by
   induction p with
-  | nil => simp [dropUntilLastMem] at hv
+  | nil => exact absurd hv (by simp [dropUntilLastMem])
   | cons u us ih =>
     unfold dropUntilLastMem at hv
     split_ifs at hv with htail hu
@@ -385,12 +385,12 @@ private theorem takeToFirstMem_of_exists_mem (S : Finset V) :
 
 private theorem not_mem_of_mem_takeToFirstMem_of_ne_getLast (S : Finset V) :
     ∀ p {v : V}, v ∈ takeToFirstMem S p → (takeToFirstMem S p).getLast? ≠ some v → v ∉ S
-  | [], _, h, _ => by simp [takeToFirstMem] at h
+  | [], _, h, _ => by exact absurd h (by simp [takeToFirstMem])
   | u :: us, v, hv, hne => by
     unfold takeToFirstMem at hv hne
     split_ifs at hv hne with hu
-    · simp at hv hne
-      exact absurd (hv ▸ rfl) hne
+    · have hv' : v = u := List.mem_singleton.mp hv
+      exact hne (by simp only [hv', List.getLast?_singleton])
     · rcases List.mem_cons.mp hv with rfl | hv
       · exact hu
       · apply not_mem_of_mem_takeToFirstMem_of_ne_getLast S us hv
@@ -406,7 +406,7 @@ private theorem mem_tail_of_mem_prefix_of_ne_head {q s : List V} (h : q <+: s) {
   cases q with
   | nil => simp at hv
   | cons u us =>
-    simp at hne
+    simp only [List.head?_cons, Option.some.injEq] at hne
     rcases List.mem_cons.mp hv with rfl | hv
     · exact absurd rfl hne
     · exact List.mem_append_left _ hv
@@ -745,7 +745,7 @@ private theorem isDipath_extend {G : Digraph V} {A B : Finset V} {p : List V}
     rw [List.nodup_append, List.nodup_singleton]
     refine ⟨hmapnd, trivial, ?_⟩
     intro x hx hx'
-    simp at hx'
+    simp only [List.mem_singleton] at hx'
     exact hsnk (hx' ▸ hx)
   refine ⟨?_, rfl, ?_, ?_⟩
   · rw [List.nodup_cons]
